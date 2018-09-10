@@ -8,7 +8,31 @@
     <link rel="stylesheet" type="text/css" media="screen" href="css/app.css" />
 </head>
 <body>
-    <canvas id="snow-bros-frame"></canvas>
+    <div id="cleanser">
+        <div class="menu">
+            <div class="scanlines">
+                <h1>Cleanser</h1>
+                <button class="start" onclick="cleanser.start()">Play</button>
+                <p><strong>Jump To:</strong></p>
+                <button onclick="cleanser.start()">Level 1 (Floppy)</button>
+                <button onclick="cleanser.start()">Level 2 (CD)</button>
+                <button onclick="cleanser.start()">Level 3 (Pen Drive)</button>
+                
+                <div class="instructions">
+                    <p>
+                        <strong>Controls: </strong>
+                        <small>Press Arrow keys to move and Spacebar to shoot.</small>
+                    </p>
+                    <p>
+                        <strong>Instructions: </strong>
+                        <small>In the era when internet was not everywhere, we all used various offline storage devices to save our precious data. But The to limited Your mission is</small>
+                    </p>
+                </div>
+                <small>by @pntgupta</small>
+            </div>
+        </div>
+        <canvas id="cleanser-canvas"></canvas>
+    </div>
     <script src="js/index.js"></script>
 </body>
 </html>

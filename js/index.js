@@ -1,11 +1,32 @@
-const frame = document.getElementById('snow-bros-frame')
+const frame = document.getElementById('cleanser-canvas')
+const gameFrame = document.getElementById('cleanser')
+const menu = document.querySelector('#cleanser .menu')
 const ctx = frame.getContext('2d')
-const FRAME_WIDTH = 500
-const FRAME_HEIGHT = 500
+const FRAME_WIDTH = 700
+const FRAME_HEIGHT = Math.max(document.documentElement.clientHeight - 150, 500)
 const GRAVITY = 0.5
+const STAGE = {
+  FLOPPY: 'floppy',
+  CD: 'cd',
+  PEN_DRIVE: 'penDrive'
+}
 
 frame.height = FRAME_HEIGHT
+gameFrame.style.height = FRAME_HEIGHT + 'px'
 frame.width = FRAME_WIDTH
+gameFrame.style.width = FRAME_WIDTH + 'px'
+
+const platformImg = new Image();
+platformImg.src = 'https://www.html5canvastutorials.com/demos/assets/wood-pattern.png';
+platformImg.width = 200
+platformImg.height = 145
+
+const playerImg = new Image();
+playerImg.src = 'assets/player.png';
+
+const opponentImg = new Image();
+opponentImg.src = 'assets/opponent.png';
+
 
 const Utils = {
   isCollision(obj1, obj2) {
@@ -13,6 +34,15 @@ const Utils = {
       obj1.x + obj1.width >= obj2.x &&
       obj1.y <= obj2.y + obj2.height &&
       obj1.y + obj1.height >= obj2.y
+  },
+  paintPlatform({ x, y, width, height}) {
+    const repetition = parseInt(width / platformImg.width)
+    const sliceWidth = width % platformImg.width
+
+    for (let i = 0; i < repetition; i++) {
+      ctx.drawImage(platformImg, x + (platformImg.width * i), y, platformImg.width, height);
+    }
+    ctx.drawImage(platformImg, 0, 0, sliceWidth, platformImg.height, x + width - sliceWidth, y, sliceWidth, height);
   }
 }
 
@@ -52,7 +82,7 @@ class Shooter {
     const innerCurveX = this.x + this.thiness * this.radius * this.dirn
     const outerCurveX = this.x + this.radius * this.dirn
 
-    ctx.fillStyle = 'white'
+    ctx.fillStyle = '#d4f0ff'
     ctx.beginPath()
     ctx.moveTo(this.x, this.y - this.radius)
     if (!this.isFinished) {
@@ -76,7 +106,7 @@ class Shooter {
 }
 
 class Player {
-  constructor({ height = 50, width = 30, x = 20, y = FRAME_HEIGHT - height }) {
+  constructor({ height = 50, width = 40, x = 20, y = FRAME_HEIGHT - height } = {}) {
     this.height = height
     this.width = width
     this.x = x
@@ -98,9 +128,12 @@ class Player {
 
 
   render() {
-    ctx.fillStyle = 'white'
-    ctx.fillRect(this.x, this.y, this.width, this.height)
     this._renderShooters()
+    ctx.save()
+    ctx.translate(this.dirn === 1 ? this.x : this.x + this.width, this.y)
+    ctx.scale(1 * this.dirn, 1)
+    ctx.drawImage(playerImg, 0, 0, this.width, this.height);
+    ctx.restore()
   }
 
   update() {
@@ -198,9 +231,14 @@ class Opponent {
 
   render() {
     const nonHitsRatio = (this.maxHits - this.hits)/this.maxHits
-    ctx.fillStyle = 'black'
-    ctx.fillRect(this.x, this.y, this.width, this.height * nonHitsRatio)
-    ctx.fillStyle = 'blue'
+
+    ctx.save()
+    ctx.translate(this.dirn === 1 ? this.x : this.x + this.width, this.y)
+    ctx.scale(1 * this.dirn, 1)
+    ctx.drawImage(opponentImg, 0, 0, this.width, this.height);
+    ctx.restore()
+
+    ctx.fillStyle = '#d4f0ff'
     ctx.fillRect(this.x, this.y + this.height * nonHitsRatio, this.width, this.height * (1 - nonHitsRatio))
   }
   update() {
@@ -267,124 +305,508 @@ class Opponent {
 }
 
 class Background {
+  constructor({ stage }) {
+    this.stage = stage
+  }
+  
   render() {
-    ctx.fillStyle = `hsl(${Date.now() / 50}, 50%, 50%)`
+    this['render' + this.stage]()
+  }
+
+  ['render' + STAGE.FLOPPY]() {
+    // Floopy bg colour
+    ctx.fillStyle = `#05080f`
+    ctx.fillRect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+
+    // Center circle
+    ctx.beginPath()
+    ctx.fillStyle = '#999'
+    ctx.arc(FRAME_WIDTH/2, FRAME_HEIGHT/2 - 2, 51, 0, 2 * Math.PI)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.fillStyle = '#444a51'
+    ctx.arc(FRAME_WIDTH/2, FRAME_HEIGHT/2, 50, 0, 2 * Math.PI)
+    ctx.fill()
+
+    // Rectangles on above circle
+    ctx.fillStyle = '#999'
+    ctx.fillRect((FRAME_WIDTH/2) - 11, (FRAME_HEIGHT/2) - 11, 20, 20)
+    ctx.fillStyle = '#05080f'
+    ctx.fillRect((FRAME_WIDTH/2) - 10, (FRAME_HEIGHT/2) - 10, 20, 20)
+
+    ctx.fillStyle = '#999'
+    ctx.fillRect((FRAME_WIDTH/2) + 19, (FRAME_HEIGHT/2) - 16, 20, 30)
+    ctx.fillStyle = '#05080f'
+    ctx.fillRect((FRAME_WIDTH/2) + 20, (FRAME_HEIGHT/2) - 15, 20, 30)
+
+
+    // Cut at top
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(80, 0, FRAME_WIDTH - 160, 10)
+
+    // Top rectangles
+    let width = 200
+    ctx.fillStyle = '#272a2f'
+    ctx.fillRect(FRAME_WIDTH/2 - width/2 - 49, 6, width + 100, 100)
+    ctx.fillStyle = '#16191f'
+    ctx.fillRect(FRAME_WIDTH/2 - width/2 - 50, 5, width + 100, 100)
+    ctx.fillStyle = '#999'
+    ctx.fillRect(FRAME_WIDTH/2 - width/2 - 49, 6, width, 100)
+    ctx.fillStyle = '#444a51'
+    ctx.fillRect(FRAME_WIDTH/2 - width/2 - 50, 5, width, 100)
+
+    ctx.fillStyle = '#999'
+    ctx.fillRect(FRAME_WIDTH/2 - width/2 - 21, 24, 50, 75)
+    ctx.fillRect(FRAME_WIDTH/2 - width/2 - 5, 19, 20, 10)
+    ctx.fillRect(FRAME_WIDTH/2 + 9, 19, 30, 20)
+
+    // Black spaces on top silver surface
+    ctx.fillStyle = '#16191f'
+    ctx.fillRect(FRAME_WIDTH/2 - width/2 - 20, 25, 50, 75)
+    ctx.fillRect(FRAME_WIDTH/2 - width/2 - 4, 20, 20, 10)
+    ctx.fillRect(FRAME_WIDTH/2 + 10, 20, 30, 20)
+
+    ctx.fillStyle = '#272a2f'
+    ctx.fillRect(FRAME_WIDTH/2 + width/2 - 49, 20, 100, 10)
+    ctx.fillStyle = '#000'
+    ctx.fillRect(FRAME_WIDTH/2 + width/2 - 49, 21, 98, 8)
+
+    // Bottom left rectangle
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(20, FRAME_HEIGHT - 50, 40, 30)
+  }
+
+  ['render' + STAGE.CD]() {
+    const radius = Math.min(FRAME_HEIGHT, FRAME_WIDTH)/2 - 15
+    ctx.beginPath()
+    ctx.fillStyle = 'black'
     ctx.fillRect(0, 0, FRAME_WIDTH, FRAME_HEIGHT)
+
+    // CD surface
+    ctx.beginPath()
+    ctx.strokeStyle = '#fff'
+    ctx.arc(FRAME_WIDTH/2 - 1, FRAME_HEIGHT/2 - 1, radius, 0, 2 * Math.PI)
+    ctx.stroke()
+
+    ctx.beginPath()
+    ctx.fillStyle = '#797979'
+    ctx.arc(FRAME_WIDTH/2, FRAME_HEIGHT/2, radius, 0, 2 * Math.PI)
+    ctx.fill()
+
+    // Inner dark silver ring
+    ctx.beginPath()
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 0.5
+    ctx.arc(FRAME_WIDTH/2 - 1, FRAME_HEIGHT/2 - 1, radius * 0.4, 0, 2 * Math.PI)
+    ctx.stroke()
+
+    ctx.beginPath()
+    ctx.fillStyle = '#444444'
+    ctx.arc(FRAME_WIDTH/2, FRAME_HEIGHT/2, radius * 0.4, 0, 2 * Math.PI)
+    ctx.fill()
+
+    // Inner plastic ring
+    ctx.beginPath()
+    ctx.fillStyle = '#b6b5bd'
+    ctx.arc(FRAME_WIDTH/2, FRAME_HEIGHT/2, radius * 0.35, 0, 2 * Math.PI)
+    ctx.fill()
+
+    // Lines on plastic ring
+    ctx.beginPath()
+    ctx.strokeStyle = '#000'
+    ctx.lineWidth = 0.5
+    ctx.arc(FRAME_WIDTH/2, FRAME_HEIGHT/2, radius * 0.32, 0, 2 * Math.PI)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.lineWidth = 1
+    ctx.arc(FRAME_WIDTH/2, FRAME_HEIGHT/2, radius * 0.27, 0, 2 * Math.PI)
+    ctx.stroke()
+
+    //Innermost dark silver ring
+    ctx.beginPath()
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 0.5
+    ctx.arc(FRAME_WIDTH/2 - 1, FRAME_HEIGHT/2 - 1, radius * 0.16, 0, 2 * Math.PI)
+    ctx.stroke()
+
+    ctx.beginPath()
+    ctx.fillStyle = '#444444'
+    ctx.arc(FRAME_WIDTH/2, FRAME_HEIGHT/2, radius * 0.16, 0, 2 * Math.PI)
+    ctx.fill()
+
+    // Blank surface at center
+    ctx.beginPath()
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 0.5
+    ctx.arc(FRAME_WIDTH/2 - 1, FRAME_HEIGHT/2 - 1, radius * 0.14, 0, 2 * Math.PI)
+    ctx.stroke()
+
+    ctx.beginPath()
+    ctx.fillStyle = 'black'
+    ctx.arc(FRAME_WIDTH/2, FRAME_HEIGHT/2, radius * 0.14, 0, 2 * Math.PI)
+    ctx.fill()
+  }
+
+  ['render' + STAGE.PEN_DRIVE]() {
+    ctx.beginPath()
+    ctx.fillStyle = 'black'
+    ctx.fillRect(0, 0, FRAME_WIDTH, FRAME_HEIGHT)
+
+    ctx.strokeStyle = '#444'
+    ctx.fillStyle = '#555'
+    ctx.fillRect(FRAME_WIDTH * 0.25 + 3, 177, FRAME_WIDTH * 0.5, FRAME_HEIGHT - 230)
+    ctx.fillStyle = '#444'
+    ctx.rect(FRAME_WIDTH * 0.25, 180, FRAME_WIDTH * 0.5, FRAME_HEIGHT - 230)
+    ctx.moveTo(FRAME_WIDTH * 0.25, FRAME_HEIGHT - 50)
+    ctx.bezierCurveTo(FRAME_WIDTH * 0.3, FRAME_HEIGHT - 10, FRAME_WIDTH * 0.7, FRAME_HEIGHT - 10, FRAME_WIDTH * 0.75, FRAME_HEIGHT - 50)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.strokeStyle = 'black'
+
+    // Hole at bottom
+    ctx.fillStyle = '#888'
+    ctx.fillRect(FRAME_WIDTH * 0.5 - 14, FRAME_HEIGHT - 49, 30, 20)
+    ctx.fillStyle = 'black'
+    ctx.fillRect(FRAME_WIDTH * 0.5 - 15, FRAME_HEIGHT - 50, 30, 20)
+
+    // Slim rectangles between top and base
+    ctx.fillStyle = '#333'
+    ctx.fillRect(FRAME_WIDTH * 0.35 + 2, 142, FRAME_WIDTH * 0.3, 20)
+    ctx.fillStyle = '#222'
+    ctx.fillRect(FRAME_WIDTH * 0.35, 140, FRAME_WIDTH * 0.3, 20)
+
+    ctx.fillStyle = '#444'
+    ctx.fillRect(FRAME_WIDTH * 0.3 + 2, 158, FRAME_WIDTH * 0.4, 20)
+    ctx.fillStyle = '#333'
+    ctx.fillRect(FRAME_WIDTH * 0.3, 160, FRAME_WIDTH * 0.4, 20)
+
+    // Female USB
+    ctx.fillStyle = '#aaa'
+    ctx.fillRect(FRAME_WIDTH * 0.4 + 5, 25, FRAME_WIDTH * 0.2, 110)
+    ctx.fillStyle = '#888'
+    ctx.fillRect(FRAME_WIDTH * 0.4, 30, FRAME_WIDTH * 0.2, 110)
+
+    // Rectangles on top
+    ctx.fillStyle = '#bbb'
+    ctx.fillRect(FRAME_WIDTH * 0.4 + 22, 72, 30, 20)
+    ctx.fillRect(FRAME_WIDTH * 0.6 - 48, 72, 30, 20)
+
+    ctx.fillStyle = 'black'
+    ctx.fillRect(FRAME_WIDTH * 0.4 + 20, 70, 30, 20)
+    ctx.fillRect(FRAME_WIDTH * 0.6 - 50, 70, 30, 20)
+
+    // Line at top
+    ctx.moveTo(FRAME_WIDTH * 0.5 - 5, 30)
+    ctx.lineTo(FRAME_WIDTH * 0.5 - 5, 70)
+    ctx.lineTo(FRAME_WIDTH * 0.5 + 10, 70)
+    ctx.lineTo(FRAME_WIDTH * 0.5 + 10, 90)
+    ctx.lineTo(FRAME_WIDTH * 0.5 - 5, 90)
+    ctx.lineTo(FRAME_WIDTH * 0.5 - 5, 140)
+    ctx.stroke()
   }
 }
 
 class Stage {
   constructor() {
-    this.player = new Player({})
+    this.currentStage = 0
 
+    this.pause = false
+    this.isGameOver = false
     this.platformHeight = 30
     this.playerJumpDistance = 10
+
+    this._resetPlayer()
     this.platformDistance = this.player.height + this.platformHeight + this.playerJumpDistance
 
     this.level1Y = FRAME_HEIGHT - this.platformDistance
     this.level2Y = this.level1Y - this.platformDistance
     this.level3Y = this.level2Y - this.platformDistance
     this.level4Y = this.level3Y - this.platformDistance
+    this.level5Y = this.level4Y - this.platformDistance
 
     this.platformsConfig = [
       {
-        x: 0,
-        y: FRAME_HEIGHT,
-        width: FRAME_WIDTH
+        name: STAGE.FLOPPY,
+        config: [
+          {
+            x: 0,
+            y: FRAME_HEIGHT,
+            width: FRAME_WIDTH
+          },
+          {
+            x: 0,
+            y: this.level1Y,
+            width: FRAME_WIDTH * 0.25
+          },
+          {
+            x: FRAME_WIDTH * 0.4,
+            y: this.level1Y,
+            width: FRAME_WIDTH * 0.2
+          },
+          {
+            x: FRAME_WIDTH * 0.75,
+            y: this.level1Y,
+            width: FRAME_WIDTH
+          },
+          {
+            x: FRAME_WIDTH * 0.2,
+            y: this.level2Y,
+            width: FRAME_WIDTH * 0.6
+          },
+          {
+            x: 0,
+            y: this.level3Y,
+            width: FRAME_WIDTH * 0.35
+          },
+          {
+            x: FRAME_WIDTH * 0.65,
+            y: this.level3Y,
+            width: FRAME_WIDTH
+          },
+          {
+            x: FRAME_WIDTH * 0.1,
+            y: this.level4Y,
+            width: FRAME_WIDTH * 0.2
+          },
+          {
+            x: FRAME_WIDTH * 0.7,
+            y: this.level4Y,
+            width: FRAME_WIDTH * 0.2
+          },
+          {
+            x: FRAME_WIDTH * 0.3,
+            y: this.level4Y - this.platformHeight,
+            width: FRAME_WIDTH * 0.4
+          }
+        ],
+        ui: [
+          { 
+            x: FRAME_WIDTH * 0.3,
+            y: this.level4Y,
+            width: FRAME_WIDTH * 0.4,
+            height: this.platformHeight
+          }
+        ]
       },
       {
-        x: 0,
-        y: this.level1Y,
-        width: FRAME_WIDTH * 0.25
+        name: STAGE.CD,
+        config: [
+          {
+            x: 0,
+            y: FRAME_HEIGHT,
+            width: FRAME_WIDTH
+          },
+          {
+            x: 0,
+            y: this.level1Y,
+            width: FRAME_WIDTH * 0.2
+          },
+          {
+            x: FRAME_WIDTH * 0.35,
+            y: this.level1Y,
+            width: FRAME_WIDTH * 0.3
+          },
+          {
+            x: FRAME_WIDTH * 0.8,
+            y: this.level1Y,
+            width: FRAME_WIDTH * 0.2
+          },
+          {
+            x: 0,
+            y: this.level2Y,
+            width: FRAME_WIDTH * 0.1
+          },
+          {
+            x: FRAME_WIDTH * 0.45,
+            y: this.level2Y,
+            width: FRAME_WIDTH * 0.1
+          },
+          {
+            x: FRAME_WIDTH * 0.9,
+            y: this.level2Y,
+            width: FRAME_WIDTH * 0.1
+          },
+          {
+            x: 0,
+            y: this.level3Y,
+            width: FRAME_WIDTH * 0.1
+          },
+          {
+            x: FRAME_WIDTH * 0.2,
+            y: this.level3Y,
+            width: FRAME_WIDTH * 0.15,
+            height: this.level2Y - this.level3Y + this.platformHeight
+          },
+          {
+            x: FRAME_WIDTH * 0.45,
+            y: this.level3Y,
+            width: FRAME_WIDTH * 0.1
+          },
+          {
+            x: FRAME_WIDTH * 0.65,
+            y: this.level3Y,
+            width: FRAME_WIDTH * 0.15,
+            height: this.level2Y - this.level3Y + this.platformHeight
+          },
+          {
+            x: FRAME_WIDTH * 0.9,
+            y: this.level3Y,
+            width: FRAME_WIDTH * 0.1
+          },
+          {
+            x: 0,
+            y: this.level4Y,
+            width: FRAME_WIDTH * 0.15
+          },
+          {
+            x: FRAME_WIDTH * 0.3,
+            y: this.level4Y,
+            width: FRAME_WIDTH * 0.4
+          },
+          {
+            x: FRAME_WIDTH * 0.85,
+            y: this.level4Y,
+            width: FRAME_WIDTH * 0.15
+          },
+          {
+            x: FRAME_WIDTH * 0.2,
+            y: this.level5Y,
+            width: FRAME_WIDTH * 0.6
+          }
+        ]
       },
       {
-        x: FRAME_WIDTH * 0.4,
-        y: this.level1Y,
-        width: FRAME_WIDTH * 0.2
-      },
-      {
-        x: FRAME_WIDTH * 0.75,
-        y: this.level1Y,
-        width: FRAME_WIDTH
-      },
-      {
-        x: FRAME_WIDTH * 0.2,
-        y: this.level2Y,
-        width: FRAME_WIDTH * 0.6
-      },
-      {
-        x: 0,
-        y: this.level3Y,
-        width: FRAME_WIDTH * 0.35
-      },
-      {
-        x: FRAME_WIDTH * 0.65,
-        y: this.level3Y,
-        width: FRAME_WIDTH
-      },
-      {
-        x: FRAME_WIDTH * 0.1,
-        y: this.level4Y,
-        width: FRAME_WIDTH * 0.2
-      },
-      {
-        x: FRAME_WIDTH * 0.7,
-        y: this.level4Y,
-        width: FRAME_WIDTH * 0.2
-      },
-      {
-        x: FRAME_WIDTH * 0.3,
-        y: this.level4Y - this.platformHeight,
-        width: FRAME_WIDTH * 0.4
+        name: STAGE.PEN_DRIVE,
+        config: [
+          {
+            x: 0,
+            y: FRAME_HEIGHT,
+            width: FRAME_WIDTH
+          },
+          {
+            x: FRAME_WIDTH * 0.1,
+            y: this.level1Y,
+            width: FRAME_WIDTH * 0.35
+          },
+          {
+            x: FRAME_WIDTH * 0.55,
+            y: this.level1Y,
+            width: FRAME_WIDTH * 0.35
+          },
+          {
+            x: 0,
+            y: this.level2Y,
+            width: FRAME_WIDTH * 0.2
+          },
+          {
+            x: FRAME_WIDTH * 0.8,
+            y: this.level2Y,
+            width: FRAME_WIDTH * 0.2
+          },
+          {
+            x: FRAME_WIDTH * 0.1,
+            y: this.level3Y,
+            width: FRAME_WIDTH * 0.25
+          },
+          {
+            x: FRAME_WIDTH * 0.65,
+            y: this.level3Y,
+            width: FRAME_WIDTH * 0.2
+          },
+          {
+            x: 0,
+            y: this.level4Y,
+            width: FRAME_WIDTH * 0.2
+          },
+          {
+            x: FRAME_WIDTH * 0.8,
+            y: this.level4Y,
+            width: FRAME_WIDTH * 0.2
+          },
+          {
+            x: FRAME_WIDTH * 0.1,
+            y: this.level5Y,
+            width: FRAME_WIDTH * 0.8
+          },
+          {
+            x: FRAME_WIDTH * 0.35,
+            y: this.level4Y,
+            width: FRAME_WIDTH * 0.1,
+            height: this.level1Y - this.level3Y + this.platformHeight
+          },
+          {
+            x: FRAME_WIDTH * 0.55,
+            y: this.level4Y,
+            width: FRAME_WIDTH * 0.1,
+            height: this.level1Y - this.level3Y + this.platformHeight
+          },
+          {
+            x: FRAME_WIDTH * 0.45,
+            y: this.level5Y + this.platformHeight,
+            width: FRAME_WIDTH * 0.1,
+            height: this.level1Y - this.level5Y
+          }
+        ]
       }
     ]
 
     this.opponentsConfig = [
       {
+        x: 0
+      },
+      {
+        x: FRAME_WIDTH * 0.3
+      },
+      {
+        x: FRAME_WIDTH * 0.6
+      },
+      {
+        x: FRAME_WIDTH * 1
+      },
+      {
+        x: FRAME_WIDTH * 0.15,
+        y: this.level4Y
+      },
+      {
+        x: FRAME_WIDTH * 0.4,
+        y: this.level4Y
+      },
+      {
+        x: FRAME_WIDTH * 0.75,
+        y: this.level4Y
+      },
+      {
         x: 0,
-        y: 100
+        y: this.level3Y
       },
       {
-        x: 100
+        x: FRAME_WIDTH,
+        y: this.level3Y
       },
       {
-        x: 300
-      },
-      {
-        x: 400
-      },
-      {
-        x: 450,
-        y: 100
-      },
-      {
-        x: 350,
-        y: 200
-      },
-      {
-        x: 100,
-        y: 300
-      },
-      {
-        x: 400,
-        y: 300
+        x: FRAME_WIDTH * 0.5,
+        y: this.level2Y
       }
     ]
-    this.platformInstances = this.platformsConfig.map(config => new Platform(config))
-    this.opponents = this.opponentsConfig.map(config => new Opponent(config))
-    this.isGameOver = false
+    
+    this._resetPlatforms()
+    this._resetOpponents()
+    this._resetBackground()
   }
 
   render() {
-    // We may want to add some UI on existing platforms, thus render platform 1st and then UI
-    this.platformInstances.forEach(platform => platform.render())
-    this._renderStageUI()
-    this.player.render()
-    this.opponents.forEach(opponent => opponent.render())
+    if (!this.pause) {
+      // We may want to add some UI on existing platforms, thus render platform 1st and then UI
+      this.background.render()
+      this.platformInstances.forEach(platform => platform.render())
+      this._renderStageUI()
+      this.opponents.forEach(opponent => opponent.render())
+      this.player.render()
+    }
   }
 
   update() {
-    if (!this.isGameOver) {
+    if (!this.isGameOver && !this.pause) {
       this.player.update()
       for (let i = 0; i < this.opponents.length; i++) {
         const opponent = this.opponents[i]
@@ -395,6 +817,11 @@ class Stage {
           opponent.update()
         }
       }
+
+      if (!this.opponents.length) {
+        return this._stageUp()
+      }
+      
       this._detectPlayerAndOpponentCollision()
 
       // Reset atRestY so that if object is not on any platform, we can freefall it.
@@ -504,9 +931,37 @@ class Stage {
     // this.isGameOver = true;
   }
 
+  _stageUp() {
+    this.currentStage++
+    this.pause = true
+    setTimeout(() => {
+      this._resetPlatforms()
+      this._resetOpponents()
+      this._resetPlayer()
+      this.pause = false
+    }, 5000)
+  }
+
   _renderStageUI() {
-    ctx.fillStyle = 'grey'
-    ctx.fillRect(FRAME_WIDTH * 0.1, this.level4Y, FRAME_WIDTH * 0.8, this.platformHeight)
+    const uiConfigList = this.platformsConfig[this.currentStage].ui
+    uiConfigList && uiConfigList.forEach(config => Utils.paintPlatform({ x: FRAME_WIDTH * 0.3, y: this.level4Y, width: FRAME_WIDTH * 0.4, height: this.platformHeight }, true))
+
+  }
+
+  _resetPlatforms() {
+    this.platformInstances = this.platformsConfig[this.currentStage].config.map(config => new Platform(config))
+  }
+
+  _resetOpponents() {
+    this.opponents = this.opponentsConfig.map(config => new Opponent(config))
+  }
+
+  _resetPlayer() {
+    this.player = new Player()
+  }
+
+  _resetBackground() {
+    this.background = new Background({ stage: this.platformsConfig[this.currentStage].name })
   }
 }
 
@@ -519,21 +974,18 @@ class Platform {
   }
 
   render() {
-    ctx.fillStyle = 'grey'
-    ctx.fillRect(this.x, this.y, this.width, this.height)
+    Utils.paintPlatform(this)
   }
 }
 
-class SnowBros {
+class Cleanser {
   constructor() {
-    this.background = new Background()
     this.stage = new Stage()
   }
   update() {
     this.stage.update()
   }
   render() {
-    this.background.render()
     this.stage.render()
   }
   loop() {
@@ -542,8 +994,9 @@ class SnowBros {
     requestAnimationFrame(() => this.loop())
   }
   start() {
+    menu.className += 'hidden'
     this.loop()
   }
 }
 
-new SnowBros().start()
+window.cleanser = new Cleanser()
