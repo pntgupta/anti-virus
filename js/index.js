@@ -1142,6 +1142,7 @@ class Stage {
         this._resetPlatforms()
         this._resetOpponents()
         this._resetPlayer()
+        this._resetBackground()
         Utils.hideStageCompletedFrame()
         this.pause = false
       }, 5000)
