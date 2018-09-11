@@ -5,7 +5,7 @@ body {
   padding: 25px;
   color: white;
   text-align: center;
-  font-family: monospace, Helvetica, Arial;
+  font-family: monospace, Helvetica;
 }
 
 h1 {
@@ -58,13 +58,13 @@ button:hover {
   position: relative;
 }
 
-#anti-virus .menu {
+.menu {
   background: #122240;
   height: 100%;
   z-index: 3;
 }
 
-#anti-virus .score {
+.score {
   z-index: 2;
   position: absolute;
   right: 0px;
@@ -81,45 +81,45 @@ button:hover {
   display: none;
 }
 
-#anti-virus .start {
+.start {
   padding: 20px;
   text-transform: uppercase;
   margin: 10px auto 30px auto;
 }
 
-#anti-virus .instructions {
+.instructions {
   text-align: left;
   margin-top: 50px;
 }
 
-#anti-virus .developer {
+.developer {
   position: absolute;
   top: 0px;
   right: 0px;
   padding: 25px;
 }
 
-#anti-virus .lines {
+.lines {
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2) 70%, rgba(0, 0, 0, 0.4));
   background-size: 6px 6px;
   height: 100%;
   padding: 0px 20px;
 }
 
-#anti-virus .stage-frame {
+.stage-frame {
   display: none;
 }
 
-#anti-virus .game-over {
+.game-over {
   display: none;
 }
 
 
-#anti-virus .game-completed {
+.game-completed {
   display: none;
 }
 
-#anti-virus .frames {
+.frames {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -127,6 +127,6 @@ button:hover {
   z-index: 4;
 }
 
-#anti-virus .high-score {
+.high-score {
   display: none;
 }

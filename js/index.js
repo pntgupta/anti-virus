@@ -67,7 +67,7 @@ const Utils = {
   showGameOverFrame(level, score) {
     document.querySelector('.game-over').style.display = "block";
     document.querySelector('.game-over .stage-score').innerHTML = score;
-    this.saveHighScore(score)
+    Utils.saveHighScore(score)
     document.querySelector('.game-over .reset').onclick = () => {
       document.querySelector('.game-over').style.display = "none";
       start(level)
@@ -76,19 +76,19 @@ const Utils = {
   showGameCompletedFrame(score) {
     document.querySelector('.game-completed').style.display = "block";
     document.querySelector('.game-completed .stage-score').innerHTML = score;
-    this.saveHighScore(score)
+    Utils.saveHighScore(score)
   },
   hideGameCompletedFrame() {
     document.querySelector('.game-completed').style.display = "none";
   },
   saveHighScore(score) {
-    return localStorage.setItem('score', Math.max(+this.getHighScore(), score))
+    return localStorage.setItem('score', Math.max(+Utils.getHighScore(), score))
   },
   getHighScore() {
     return localStorage.getItem('score')
   },
   showHighScore() {
-    const score = this.getHighScore()
+    const score = Utils.getHighScore()
     if (score) {
       document.querySelector('.high-score').style.display = "block";
       document.querySelector('.high-score .stage-score').innerHTML = score;
@@ -169,6 +169,7 @@ class Player {
     this.speedY = GRAVITY
     this.maxSpeedY = 10
     this.jumpDistance = 10
+    this.blinkCount = 20
     this.dy = 0
     this.atRestY = true
     this.dirn = 1
@@ -178,6 +179,7 @@ class Player {
     this.activeShooters = []
     this.throttle = new Throttle(400)
     this._attachListeners()
+    this._blinkOnStart()
   }
 
 
@@ -186,7 +188,9 @@ class Player {
     ctx.save()
     ctx.translate(this.dirn === 1 ? this.x : this.x + this.width, this.y)
     ctx.scale(this.dirn, 1)
-    if (this.isOut) {
+    if (this.blinkCount >= 0) {
+      ctx.globalAlpha = +(this.blinkCount % 2 === 0)
+    } else if (this.isOut) {
       this.opacity -= 0.01
       ctx.globalAlpha = this.opacity;
     }
@@ -203,7 +207,9 @@ class Player {
   }
 
   out() {
-    this.isOut = true
+    if (this.blinkCount < 0) {
+      this.isOut = true
+    }
   }
 
   _updateMovementX() {
@@ -265,6 +271,14 @@ class Player {
     document.addEventListener('keydown', (e) => this._onkeydown(e))
     document.addEventListener('keyup', (e) => this._onkeyup(e))
   }
+  _blinkOnStart() {
+    let interval = setInterval(() => {
+      this.blinkCount--
+      if (this.blinkCount < 0) {
+        clearInterval(interval)
+      }
+    }, 200)
+  }
 }
 
 class Opponent {
@@ -287,16 +301,21 @@ class Opponent {
     this.isKilled = false
     this.throttle = new Throttle(500, { immediate: false })
     this.jumpProbability = 0.004
-    this.jumpFromEdgeProbability = 0.1
-    this.returnBackFromEdgeProbability = 0.7
+    this.jumpFromEdgeProbability = 0.2
+    this.returnBackFromEdgeProbability = 0.6
     this.freeFallFromEdgeProbability = 0.2
     this.hits = 0
     this.maxHits = 6
     this.timeToRevertHit = 3000
-    this._interval
+    // this.numberOfBurstingParticles = 100
+    // this.burstingParticles = []
+    this._interval = null
   }
 
   render() {
+    // if (this.burstingParticles.length) {
+      // this.burstingParticles.forEach(particle => particle.render())
+    // } else {
     const nonHitsRatio = (this.maxHits - this.hits)/this.maxHits
 
     ctx.save()
@@ -307,13 +326,22 @@ class Opponent {
 
     ctx.fillStyle = '#d4f0ff'
     ctx.fillRect(this.x, this.y + this.height * nonHitsRatio, this.width, this.height * (1 - nonHitsRatio))
+    // }
   }
   update() {
+    // if (this.burstingParticles.length) {
+      // this.burstingParticles.forEach(particle => particle.update())
+    // } else {
     if (this.isSlidingBeforeKilling && Utils.hasReachedSides(this.x, this.width) && Utils.hasReachedBottom(this.y, this.height)) {
+        // this._burstOut()
+        // setTimeout(() => {
       this.isKilled = true
+          // this.burstingParticles = []
+        // }, 500)
     }
     this._updateMovementX()
     this._updateMovementY()
+    // }
   }
 
   jump() {
@@ -321,12 +349,12 @@ class Opponent {
     this.atRestY = false
   }
 
-  hit({ dirn, value = 1}) {
-    this.hits += value
+  hit({ dirn, value = 1 }) {
+    this.hits = Math.min(this.hits + value, this.maxHits)
     clearInterval(this._interval)
     score.textContent = +score.textContent + HIT_POINTS
 
-    if (this.hits > this.maxHits) {
+    if (this.hits >= this.maxHits) {
       this._kill(dirn)
     } else {
       this._updateSpeedX()
@@ -365,6 +393,7 @@ class Opponent {
     if (Utils.hasReachedSides(this.x, this.width)) {
       this.atRestX = true
     }
+
   }
 
   _updateMovementY() {
@@ -391,6 +420,12 @@ class Opponent {
     this.slidingSpeedX *= -1
     this.atRestX = false
   }
+
+  // _burstOut() {
+  //   for (let i = 0; i < this.numberOfBurstingParticles; i++) {
+  //     this.burstingParticles.push(new BurstParticle({ x: this.x, y: this.y }))
+  //   }
+  // }
 }
 
 class Background {
@@ -609,6 +644,30 @@ class Background {
     ctx.stroke()
   }
 }
+
+// class BurstParticle {
+//   constructor({ x, y }) {
+//     this.x = x
+//     this.y = y
+//     // Radius between 1 and 3
+//     this.radius = Math.random() * 3
+//     // Speed between -5 to 5
+//     this.speedX = Math.random() * 6 - 3
+//     this.speedY = Math.random() * 6 - 3
+//   }
+
+//   render() {
+//     ctx.beginPath()
+//     ctx.fillStyle = '#d4f0ff'
+//     ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI)
+//     ctx.fill()
+//   }
+
+//   update() {
+//     this.x += this.speedX
+//     this.y += this.speedY
+//   }
+// }
 
 class Stage {
   constructor({ startingLevel }) {
@@ -829,9 +888,9 @@ class Stage {
             width: FRAME_WIDTH * 0.2
           },
           {
-            x: FRAME_WIDTH * 0.1,
+            x: FRAME_WIDTH * 0.15,
             y: this.level5Y,
-            width: FRAME_WIDTH * 0.8
+            width: FRAME_WIDTH * 0.7
           },
           {
             x: FRAME_WIDTH * 0.35,
@@ -940,7 +999,7 @@ class Stage {
           if (nonFreezedOpponent) {
             if (Utils.isCollision(opponent, otherOpponent)) {
               if (!nonFreezedOpponent.isHitByFreezedOpponent) {
-                nonFreezedOpponent.hit({ value: 3 })
+                nonFreezedOpponent.hit({ dirn: nonFreezedOpponent.slidingSpeedX > 0 ? 1 : -1, value: 2 })
                 nonFreezedOpponent.atRestX = true
               }
               nonFreezedOpponent.isHitByFreezedOpponent = true
@@ -1010,6 +1069,8 @@ class Stage {
       obj.dy = 0
       return true
     }
+
+    return false
   }
 
   _randomizeEdgeMoment(obj, platform) {
@@ -1021,7 +1082,7 @@ class Stage {
       const random = Math.random()
       if (random < obj.jumpFromEdgeProbability) {
         obj.jump()
-      } else if (random < obj.returnBackFromEdgeProbability) {
+      } else if (random < (obj.returnBackFromEdgeProbability + obj.jumpFromEdgeProbability)) {
         obj.atRestX = true
       }
     }
@@ -1030,7 +1091,7 @@ class Stage {
   _detectPlayerAndOpponentCollision() {
     this.opponents.some(opponent => {
       if (!opponent.isSlidingBeforeKilling) {
-        if (Utils.isCollision(this.player, opponent)) {
+        if (this.player.blinkCount < 0 && Utils.isCollision(this.player, opponent)) {
           this._out()
           return true
         }
