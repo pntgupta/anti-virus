@@ -1,10 +1,13 @@
-const frame = document.getElementById('cleanser-canvas')
-const gameFrame = document.getElementById('cleanser')
-const menu = document.querySelector('#cleanser .menu')
+const frame = document.getElementById('anti-virus-canvas')
+const gameFrame = document.getElementById('anti-virus')
+const score = document.querySelector('#anti-virus .score')
 const ctx = frame.getContext('2d')
 const FRAME_WIDTH = 700
-const FRAME_HEIGHT = Math.max(document.documentElement.clientHeight - 150, 500)
+const FRAME_HEIGHT = Math.max(document.documentElement.clientHeight - 50, 500)
 const GRAVITY = 0.5
+const HIT_POINTS = 10
+const KILL_POINTS = 100
+const STAGE_POINTS = 1000
 const STAGE = {
   FLOPPY: 'floppy',
   CD: 'cd',
@@ -17,7 +20,7 @@ frame.width = FRAME_WIDTH
 gameFrame.style.width = FRAME_WIDTH + 'px'
 
 const platformImg = new Image();
-platformImg.src = 'https://www.html5canvastutorials.com/demos/assets/wood-pattern.png';
+platformImg.src = 'assets/background.png';
 platformImg.width = 200
 platformImg.height = 145
 
@@ -36,15 +39,64 @@ const Utils = {
       obj1.y + obj1.height >= obj2.y
   },
   paintPlatform({ x, y, width, height}) {
-    const repetition = parseInt(width / platformImg.width)
-    const sliceWidth = width % platformImg.width
-
-    for (let i = 0; i < repetition; i++) {
-      ctx.drawImage(platformImg, x + (platformImg.width * i), y, platformImg.width, height);
+    ctx.fillStyle = ctx.createPattern(platformImg, 'repeat')
+    ctx.fillRect(x, y, width, height)
+  },
+  hasReachedSides(x, width) {
+    return x === 0 || x + width === FRAME_WIDTH
+  },
+  hasReachedBottom(y, height) {
+    return y >= FRAME_HEIGHT - height
+  },
+  showMenu() {
+    document.querySelector('#anti-virus .menu').style.display = 'block'
+    document.getElementById('anti-virus-canvas').style.display = 'none'
+  },
+  hideMenu() {
+    document.querySelector('#anti-virus .menu').style.display = 'none'
+    document.getElementById('anti-virus-canvas').style.display = 'block'
+  },
+  showStageCompletedFrame(level, score) {
+    document.querySelector('.stage-frame').style.display = "block";
+    document.querySelector('.stage-frame .stage').innerHTML = level;
+    document.querySelector('.stage-frame .stage-score').innerHTML = score;
+  },
+  hideStageCompletedFrame() {
+    document.querySelector('.stage-frame').style.display = "none";
+  },
+  showGameOverFrame(level, score) {
+    document.querySelector('.game-over').style.display = "block";
+    document.querySelector('.game-over .stage-score').innerHTML = score;
+    this.saveHighScore(score)
+    document.querySelector('.game-over .reset').onclick = () => {
+      document.querySelector('.game-over').style.display = "none";
+      start(level)
     }
-    ctx.drawImage(platformImg, 0, 0, sliceWidth, platformImg.height, x + width - sliceWidth, y, sliceWidth, height);
+  },
+  showGameCompletedFrame(score) {
+    document.querySelector('.game-completed').style.display = "block";
+    document.querySelector('.game-completed .stage-score').innerHTML = score;
+    this.saveHighScore(score)
+  },
+  hideGameCompletedFrame() {
+    document.querySelector('.game-completed').style.display = "none";
+  },
+  saveHighScore(score) {
+    return localStorage.setItem('score', Math.max(+this.getHighScore(), score))
+  },
+  getHighScore() {
+    return localStorage.getItem('score')
+  },
+  showHighScore() {
+    const score = this.getHighScore()
+    if (score) {
+      document.querySelector('.high-score').style.display = "block";
+      document.querySelector('.high-score .stage-score').innerHTML = score;
+    }
   }
 }
+
+Utils.showHighScore()
 
 class Throttle {
   constructor(time, { immediate } = {}) {
@@ -111,6 +163,8 @@ class Player {
     this.width = width
     this.x = x
     this.y = y
+    this.isOut = false
+    this.opacity = 1
     this.speedX = 3
     this.speedY = GRAVITY
     this.maxSpeedY = 10
@@ -131,18 +185,28 @@ class Player {
     this._renderShooters()
     ctx.save()
     ctx.translate(this.dirn === 1 ? this.x : this.x + this.width, this.y)
-    ctx.scale(1 * this.dirn, 1)
-    ctx.drawImage(playerImg, 0, 0, this.width, this.height);
+    ctx.scale(this.dirn, 1)
+    if (this.isOut) {
+      this.opacity -= 0.01
+      ctx.globalAlpha = this.opacity;
+    }
+    this.opacity > 0 && ctx.drawImage(playerImg, 0, 0, this.width, this.height);
     ctx.restore()
   }
 
   update() {
-    this._updateHorizontalMovement()
-    this._updateVerticalMovement()
-    this._updateShooters()
+    if (!this.isOut) {
+      this._updateMovementX()
+      this._updateMovementY()
+      this._updateShooters()
+    }
   }
 
-  _updateHorizontalMovement() {
+  out() {
+    this.isOut = true
+  }
+
+  _updateMovementX() {
     // Left arrow
     if (this.activeKeys[37]) {
       this.dirn = -1
@@ -154,7 +218,7 @@ class Player {
       this.x = Math.min(this.x + this.speedX, FRAME_WIDTH - this.width)
     }
   }
-  _updateVerticalMovement() {
+  _updateMovementY() {
     if (this.atRestY) {
       // Top arrow
       if (this.activeKeys[38]) {
@@ -218,6 +282,9 @@ class Opponent {
     this.dirn = Math.random() >= 0.5 ? 1 : -1
     this.atRestY = false
     this.atRestX = false
+    this.slidingSpeedX = 8
+    this.isSlidingBeforeKilling = false
+    this.isKilled = false
     this.throttle = new Throttle(500, { immediate: false })
     this.jumpProbability = 0.004
     this.jumpFromEdgeProbability = 0.1
@@ -242,8 +309,11 @@ class Opponent {
     ctx.fillRect(this.x, this.y + this.height * nonHitsRatio, this.width, this.height * (1 - nonHitsRatio))
   }
   update() {
-    this._updateHorizontalMovement()
-    this._updateVerticalMovement()
+    if (this.isSlidingBeforeKilling && Utils.hasReachedSides(this.x, this.width) && Utils.hasReachedBottom(this.y, this.height)) {
+      this.isKilled = true
+    }
+    this._updateMovementX()
+    this._updateMovementY()
   }
 
   jump() {
@@ -251,47 +321,61 @@ class Opponent {
     this.atRestY = false
   }
 
-  hit() {
-    this.hits++
-    this._updateSpeedX()
+  hit({ dirn, value = 1}) {
+    this.hits += value
     clearInterval(this._interval)
+    score.textContent = +score.textContent + HIT_POINTS
 
-    // Constantly reduce the hits 
-    this._interval = setInterval(() => {
-      if (this.hits === 0) {
-        clearInterval(this._interval)
-      } else {
-        this.hits--
-        this._updateSpeedX()
-      }
-    }, this.timeToRevertHit)
+    if (this.hits > this.maxHits) {
+      this._kill(dirn)
+    } else {
+      this._updateSpeedX()
+
+      // Constantly reduce the hits 
+      this._interval = setInterval(() => {
+        if (this.hits === 0) {
+          clearInterval(this._interval)
+        } else {
+          this.hits--
+          this._updateSpeedX()
+        }
+      }, this.timeToRevertHit)
+    }
+  }
+
+  _kill(dirn) {
+    this.slidingSpeedX *= dirn
+    this.isSlidingBeforeKilling = true
   }
 
   _updateSpeedX() {
     this.speedX = this.maxSpeedX * (this.maxHits - this.hits) / this.maxHits
   }
 
-  _updateHorizontalMovement() {
+  _updateMovementX() {
     if (this.atRestX) {
-      this.throttle.exec(() => this._reverseDirn())
-    } else {
-      this.x = Math.max(Math.min(this.x + this.speedX * this.dirn, FRAME_WIDTH - this.width), 0)
+      this.isSlidingBeforeKilling ? this._reverseSlidingDirn() : this.throttle.exec(() => this._reverseDirn())
     }
-    if (this.x === 0 || this.x + this.width === FRAME_WIDTH) {
+    
+    // Don't put in else as above statement is updating the 'atRestX'
+    if (!this.atRestX) {
+      this.x = Math.max(Math.min(this.x + (this.isSlidingBeforeKilling ? this.slidingSpeedX : this.speedX * this.dirn), FRAME_WIDTH - this.width), 0)
+    }
+
+    if (Utils.hasReachedSides(this.x, this.width)) {
       this.atRestX = true
     }
   }
 
-  _updateVerticalMovement() {
+  _updateMovementY() {
     if (this.atRestY) {
-      if (Math.random() < this.jumpProbability) {
+      if (this.hits < this.maxHits && Math.random() < this.jumpProbability) {
         this.jump()
       }
     } else {
-      this.y += this.speedY
-      this.y += this.dy
+      this.y += this.speedY + this.dy
       this.dy = Math.min(this.dy + this.speedY, this.maxSpeedY)
-      if (this.y >= FRAME_HEIGHT - this.height) {
+      if (Utils.hasReachedBottom(this.y, this.height)) {
         this.y = FRAME_HEIGHT - this.height
         this.atRestY = true
       }
@@ -302,6 +386,11 @@ class Opponent {
     this.dirn *= -1
     this.atRestX = false
   }
+
+  _reverseSlidingDirn() {
+    this.slidingSpeedX *= -1
+    this.atRestX = false
+  }
 }
 
 class Background {
@@ -309,8 +398,23 @@ class Background {
     this.stage = stage
   }
   
-  render() {
+  render({ lives }) {
     this['render' + this.stage]()
+    for (let i = 0; i < lives; i++) {
+      this.drawHeart(40 + 30 * i, 40)
+    }
+  }
+
+  drawHeart(x, y, radius = 10) {
+    ctx.fillStyle = 'red'
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.arc(x + radius/2, y, radius/2, - Math.PI, 0)
+    ctx.arc(x - radius/2, y, radius/2, - Math.PI, 0)
+    ctx.moveTo(x + radius, y)
+    ctx.lineTo(x, y + radius)
+    ctx.lineTo(x - radius, y)
+    ctx.fill()
   }
 
   ['render' + STAGE.FLOPPY]() {
@@ -507,8 +611,9 @@ class Background {
 }
 
 class Stage {
-  constructor() {
-    this.currentStage = 0
+  constructor({ startingLevel }) {
+    this.currentStage = startingLevel || 0
+    this.lives = 3
 
     this.pause = false
     this.isGameOver = false
@@ -797,7 +902,7 @@ class Stage {
   render() {
     if (!this.pause) {
       // We may want to add some UI on existing platforms, thus render platform 1st and then UI
-      this.background.render()
+      this.background.render({ lives: this.lives })
       this.platformInstances.forEach(platform => platform.render())
       this._renderStageUI()
       this.opponents.forEach(opponent => opponent.render())
@@ -810,7 +915,8 @@ class Stage {
       this.player.update()
       for (let i = 0; i < this.opponents.length; i++) {
         const opponent = this.opponents[i]
-        if (opponent.hits >= opponent.maxHits) {
+        if (opponent.isKilled) {
+          score.textContent = +score.textContent + KILL_POINTS
           this.opponents.splice(i, 1)
           i--
         } else {
@@ -830,8 +936,19 @@ class Stage {
         opponent.atRestY = false
         for (let i = index + 1; i < this.opponents.length; i++) {
           const otherOpponent = this.opponents[i]
-          if ((opponent.x < otherOpponent.x ? opponent.dirn === 1 && otherOpponent.dirn === -1 : opponent.dirn === -1 && otherOpponent.dirn === 1) && Utils.isCollision(opponent, otherOpponent)) {
-            opponent.atRestX = otherOpponent.atRestX = true;
+          const nonFreezedOpponent = opponent.isSlidingBeforeKilling && otherOpponent || otherOpponent.isSlidingBeforeKilling && opponent
+          if (nonFreezedOpponent) {
+            if (Utils.isCollision(opponent, otherOpponent)) {
+              if (!nonFreezedOpponent.isHitByFreezedOpponent) {
+                nonFreezedOpponent.hit({ value: 3 })
+                nonFreezedOpponent.atRestX = true
+              }
+              nonFreezedOpponent.isHitByFreezedOpponent = true
+            } else {
+              nonFreezedOpponent.isHitByFreezedOpponent = false
+            }
+          } else if ((opponent.x < otherOpponent.x ? opponent.dirn === 1 && otherOpponent.dirn === -1 : opponent.dirn === -1 && otherOpponent.dirn === 1) && Utils.isCollision(opponent, otherOpponent)) {
+            opponent.atRestX = otherOpponent.atRestX = true
           }
         }
       })
@@ -851,7 +968,7 @@ class Stage {
 
         // Opponents
         this.opponents.forEach(opponent => {
-          this._randomizeEdgeMoment(opponent, platform)
+          !opponent.isSlidingBeforeKilling && this._randomizeEdgeMoment(opponent, platform)
           opponent.atRestX = opponent.atRestX || this._isPassingThroughPlatformSides(opponent, platform)
           opponent.atRestY = opponent.atRestY || this._isJumpingOnPlatform(opponent, platform)
         })
@@ -912,34 +1029,62 @@ class Stage {
 
   _detectPlayerAndOpponentCollision() {
     this.opponents.some(opponent => {
-      if (Utils.isCollision(this.player, opponent)) {
-        this._gameOver()
-        return true
-      }
-      
-      this.player.activeShooters.forEach(shooter => {
-        const isHit = Utils.isCollision({ x: shooter.dirn === 1 ? shooter.x : shooter.x - shooter.radius, y: shooter.y - shooter.radius, width: shooter.radius, height: shooter.radius * 2 }, opponent)
-        if (isHit) {
-          opponent.hit()
-          shooter.isFinished = true
+      if (!opponent.isSlidingBeforeKilling) {
+        if (Utils.isCollision(this.player, opponent)) {
+          this._out()
+          return true
         }
-      })
+        
+        this.player.activeShooters.forEach(shooter => {
+          const isHit = Utils.isCollision({ x: shooter.dirn === 1 ? shooter.x : shooter.x - shooter.radius, y: shooter.y - shooter.radius, width: shooter.radius, height: shooter.radius * 2 }, opponent)
+          if (isHit) {
+            opponent.hit({ dirn: shooter.dirn })
+            shooter.isFinished = true
+          }
+        })
+      }
     })
   }
 
   _gameOver() {
-    // this.isGameOver = true;
+    this.isGameOver = true;
+    Utils.showGameOverFrame(this.currentStage, score.textContent)
+  }
+
+  _out() {
+    if (!this.player.isOut) {
+      this.lives--
+      if (this.lives === 0) {
+        this._gameOver()
+      } else {
+        this.player.out()
+        setTimeout(() => {
+          this._resetPlayer()
+        }, 2000)
+      }
+    }
   }
 
   _stageUp() {
     this.currentStage++
+    score.textContent = +score.textContent + STAGE_POINTS
     this.pause = true
-    setTimeout(() => {
-      this._resetPlatforms()
-      this._resetOpponents()
-      this._resetPlayer()
-      this.pause = false
-    }, 5000)
+    if (this.currentStage >= this.platformsConfig.length) {
+      Utils.showGameCompletedFrame(score.textContent)
+      setTimeout(() => {
+        Utils.hideGameCompletedFrame(score.textContent)
+        Utils.showMenu()
+      }, 7000)
+    } else {
+      Utils.showStageCompletedFrame(this.currentStage, score.textContent)
+      setTimeout(() => {
+        this._resetPlatforms()
+        this._resetOpponents()
+        this._resetPlayer()
+        Utils.hideStageCompletedFrame()
+        this.pause = false
+      }, 5000)
+    }
   }
 
   _renderStageUI() {
@@ -978,9 +1123,11 @@ class Platform {
   }
 }
 
-class Cleanser {
-  constructor() {
-    this.stage = new Stage()
+class AntiVirus {
+  constructor(startingLevel) {
+    this.stage = new Stage({ startingLevel})
+
+    this.loop()
   }
   update() {
     this.stage.update()
@@ -993,10 +1140,10 @@ class Cleanser {
     this.render()
     requestAnimationFrame(() => this.loop())
   }
-  start() {
-    menu.className += 'hidden'
-    this.loop()
-  }
 }
 
-window.cleanser = new Cleanser()
+window.start = (startingLevel) => {
+  Utils.hideMenu()
+  score.textContent = '0'
+  new AntiVirus(startingLevel)
+}

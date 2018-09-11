@@ -1,40 +1,11 @@
 
 body {
   width: 100%;
+  margin: 0px;
+  padding: 25px;
   color: white;
   text-align: center;
   font-family: monospace, Helvetica, Arial;
-}
-
-.hidden {
-  display: none
-}
-
-#cleanser {
-  margin: auto;
-  position: relative;
-}
-
-#cleanser .menu {
-  background: cornflowerblue;
-  height: 100%;
-}
-
-#cleanser-canvas {
-  position: absolute;
-  top: 0px;
-  left: 0px;
-  pointer-events: none;
-}
-
-#cleanser .start {
-  padding: 20px;
-  text-transform: uppercase;
-  margin: 30px auto;
-}
-
-#cleanser .instructions {
-  text-align: left;
 }
 
 h1 {
@@ -42,24 +13,27 @@ h1 {
   font-size: 45px;
   padding: 25px;
   text-transform: uppercase;
-  transition: 0.3s ease 0.1s;
   text-shadow: 0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 0 5px 0 #aaa, 0 6px 1px rgba(0, 0, 0, 0.1), 0 0 5px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.3), 0 3px 5px rgba(0, 0, 0, 0.2), 0 5px 10px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.2), 0 20px 20px rgba(0, 0, 0, 0.15);
 }
 
 p {
-  font-size: 20px;
-  color: black;
-  margin: 0px;
+  font-size: 15px;
+  margin: 5px 0px;
+  line-height: 1.5;
 }
 
 strong {
   text-transform: uppercase;
 }
 
+small {
+  font-size: 14px;
+}
+
 button {
   width: 125px;
-  border: 2px solid rgba(0, 0, 0, 0.3);
-  background: rgba(0, 0, 0, 0.2);
+  border: 2px solid rgba(211, 211, 211, 0.1);
+  background: rgba(211, 211, 211, 0.2);
   color: white;
   padding: 5px;
   font-size: 12px;
@@ -70,33 +44,89 @@ button {
   margin: 5px auto;
 }
 
-.scanlines {
+
+button:hover {
+  background: rgba(211, 211, 211, 0.3);
+}
+
+.heading {
+  text-decoration: underline;
+}
+
+#anti-virus {
+  margin: auto;
+  position: relative;
+}
+
+#anti-virus .menu {
+  background: #122240;
+  height: 100%;
+  z-index: 3;
+}
+
+#anti-virus .score {
+  z-index: 2;
+  position: absolute;
+  right: 0px;
+  padding: 35px;
+  font-weight: bold;
+}
+
+#anti-virus-canvas {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  pointer-events: none;
+  z-index: 1;
+  display: none;
+}
+
+#anti-virus .start {
+  padding: 20px;
+  text-transform: uppercase;
+  margin: 10px auto 30px auto;
+}
+
+#anti-virus .instructions {
+  text-align: left;
+  margin-top: 50px;
+}
+
+#anti-virus .developer {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  padding: 25px;
+}
+
+#anti-virus .lines {
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2) 70%, rgba(0, 0, 0, 0.4));
   background-size: 6px 6px;
   height: 100%;
   padding: 0px 20px;
 }
 
-.ui {
+#anti-virus .stage-frame {
+  display: none;
+}
+
+#anti-virus .game-over {
+  display: none;
+}
+
+
+#anti-virus .game-completed {
+  display: none;
+}
+
+#anti-virus .frames {
   position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  text-align: center;
-  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  transform: translateY(-150vh);
+  left: 50%;
+  top: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  z-index: 4;
 }
 
-.ui.show {
-  transform: translateY(0px);
-}
-
-.timer {
-  transform: translateY(-100vh);
-  transition: 0.3s ease;
-}
-
-button:hover {
-  background: rgba(0, 0, 0, 0.4);
+#anti-virus .high-score {
+  display: none;
 }
