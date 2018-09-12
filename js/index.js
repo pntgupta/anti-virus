@@ -307,15 +307,15 @@ class Opponent {
     this.hits = 0
     this.maxHits = 6
     this.timeToRevertHit = 3000
-    // this.numberOfBurstingParticles = 100
-    // this.burstingParticles = []
+    this.numberOfBurstingParticles = 100
+    this.burstingParticles = []
     this._interval = null
   }
 
   render() {
-    // if (this.burstingParticles.length) {
-      // this.burstingParticles.forEach(particle => particle.render())
-    // } else {
+    if (this.burstingParticles.length) {
+      this.burstingParticles.forEach(particle => particle.render())
+    } else {
     const nonHitsRatio = (this.maxHits - this.hits)/this.maxHits
 
     ctx.save()
@@ -326,22 +326,22 @@ class Opponent {
 
     ctx.fillStyle = '#d4f0ff'
     ctx.fillRect(this.x, this.y + this.height * nonHitsRatio, this.width, this.height * (1 - nonHitsRatio))
-    // }
+    }
   }
   update() {
-    // if (this.burstingParticles.length) {
-      // this.burstingParticles.forEach(particle => particle.update())
-    // } else {
+    if (this.burstingParticles.length) {
+      this.burstingParticles.forEach(particle => particle.update())
+    } else {
     if (this.isSlidingBeforeKilling && Utils.hasReachedSides(this.x, this.width) && Utils.hasReachedBottom(this.y, this.height)) {
-        // this._burstOut()
-        // setTimeout(() => {
+        this._burstOut()
+        setTimeout(() => {
       this.isKilled = true
-          // this.burstingParticles = []
-        // }, 500)
+          this.burstingParticles = []
+        }, 500)
     }
     this._updateMovementX()
     this._updateMovementY()
-    // }
+    }
   }
 
   jump() {
@@ -421,11 +421,11 @@ class Opponent {
     this.atRestX = false
   }
 
-  // _burstOut() {
-  //   for (let i = 0; i < this.numberOfBurstingParticles; i++) {
-  //     this.burstingParticles.push(new BurstParticle({ x: this.x, y: this.y }))
-  //   }
-  // }
+  _burstOut() {
+    for (let i = 0; i < this.numberOfBurstingParticles; i++) {
+      this.burstingParticles.push(new BurstParticle({ x: this.x, y: this.y }))
+    }
+  }
 }
 
 class Background {
@@ -645,29 +645,29 @@ class Background {
   }
 }
 
-// class BurstParticle {
-//   constructor({ x, y }) {
-//     this.x = x
-//     this.y = y
-//     // Radius between 1 and 3
-//     this.radius = Math.random() * 3
-//     // Speed between -5 to 5
-//     this.speedX = Math.random() * 6 - 3
-//     this.speedY = Math.random() * 6 - 3
-//   }
+class BurstParticle {
+  constructor({ x, y }) {
+    this.x = x
+    this.y = y
+    // Radius between 1 and 3
+    this.radius = Math.random() * 3
+    // Speed between -5 to 5
+    this.speedX = Math.random() * 6 - 3
+    this.speedY = Math.random() * 6 - 3
+  }
 
-//   render() {
-//     ctx.beginPath()
-//     ctx.fillStyle = '#d4f0ff'
-//     ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI)
-//     ctx.fill()
-//   }
+  render() {
+    ctx.beginPath()
+    ctx.fillStyle = '#d4f0ff'
+    ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI)
+    ctx.fill()
+  }
 
-//   update() {
-//     this.x += this.speedX
-//     this.y += this.speedY
-//   }
-// }
+  update() {
+    this.x += this.speedX
+    this.y += this.speedY
+  }
+}
 
 class Stage {
   constructor({ startingLevel }) {
